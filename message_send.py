@@ -12,7 +12,7 @@ import time
 
 #For tempertature/humidity sensor
 import board
-import adafruit_dht
+import Adafruit_DHT
 
 #For sending update emails
 import smtplib
@@ -21,8 +21,7 @@ from email.mime.text import MIMEText
 
 #Motion Sensor Setup
 GPIO.setmode(GPIO.BOARD) #Set GPIO to pin numbering
-pir = 8 #Assign pin 8 to PIR
-GPIO.setup(pir, GPIO.IN) #Setup GPIO pin PIR as input
+GPIO.setup(23, GPIO.IN) #Setup GPIO pin PIR as input
 print ("Sensor initializing . . .")
 time.sleep(2) #Give sensor time to startup
 print ("Active")
@@ -30,31 +29,30 @@ print ("Press Ctrl+c to end program")
 
 
 #Temperature/Humidity sensor setup
-dht = adafruit_dht.DHT22(board.D6)
+dht = Adafruit_DHT.DHT22
 
 #Main while loop, can be interrupted by a faulty read from the temp/humidity
 #or by a KeyboardInterrupt (ctr-c by the user)
-while True:
-    if GPIO.input(pir) == True: #If PIR pin goes high, motion is detected
-        print ("Motion Detected!")
-        time.sleep(0.1)
-    try:
-        temperature = dht.temperature
-        humidity = dht.humidity
-        # Print what we got to the REPL
-        print("Temp: {:.1f} *C \t Humidity: {}%".format(temperature, humidity))
+try:
+    print("Loop entered")
 
-    except RuntimeError as e:
-        # Reading doesn't always work! Just print error and we'll try again
-        print("Reading from DHT failure: ", e.args)
-        time.sleep(1)
+    while True:
+        if GPIO.input(23): #If PIR pin goes high, motion is detected
+            print ("Motion Detected!")
+            time.sleep(5)
+        try:
+            humidity, temperature = Adafruit_DHT.read_retry(dht, pin)
+            # Print what we got
+            if humidity is not None and temperature is not None:
+                print("Temp: {:.1f} *C \t Humidity: {}%".format(temperature, humidity))
+                time.sleep(1)
 
-    except KeyboardInterrupt: #Ctrl-c
-        pass #Go to finally
+except KeyboardInterrupt: #Ctrl-c
+    pass #Go to finally
 
-    finally:
-        GPIO.cleanup() #reset all GPIO
-        print ("Program ended")
+finally:
+    GPIO.cleanup() #reset all GPIO
+    print ("Program ended")
 
 #Sending Email Code
 #Set-up for basic log-in information
