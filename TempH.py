@@ -16,10 +16,7 @@ import time
 #import board
 import Adafruit_DHT
 
-#For sending update emails
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
 
 #Motion Sensor Setup
 GPIO.setmode(GPIO.BCM) #Set GPIO to pin numbering
@@ -58,29 +55,4 @@ finally:
     GPIO.cleanup() #reset all GPIO
     print ("Program ended")
 
-#Sending Email Code
-#Set-up for basic log-in information
-me = "testpython.email.send@gmail.com"
-password = "pythontestme"
-you = "testpython.email.send@gmail.com"
 
-#Set-up for the message to be send
-msg = MIMEMultipart('alternative')
-msg['Subject'] = "Alert"
-msg['From'] = me
-msg['To'] = you
-
-html = '<html><body><p>Hi, I have the following alerts for you!</p></body></html>'
-part2 = MIMEText(html, 'html')
-
-msg.attach(part2)
-
-# Specifies the server to send the email over
-server = smtplib.SMTP_SSL('smtp.gmail.com')
-
-
-# Login and send the email out
-server.login(me, password)
-server.sendmail(me, you, msg.as_string())
-
-server.quit()
