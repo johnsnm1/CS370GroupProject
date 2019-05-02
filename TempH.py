@@ -11,16 +11,55 @@
 
 import RPi.GPIO as GPIO
 import time
+from message_send import *
 
 #For tempertature/humidity sensor
 #import board
 import Adafruit_DHT
 
+class Datum:
+        def __init__(self):
+            self.currentTemp = 0
+            self.currentHumid = 0
+            self.cumulitiveTemp = 0
+            self.cumulitiveHumidity = 0
+            self.currentTemperatureAverage = 0
+            self.currentHumidityAverage = 0
+            self.accessTimes = 0
 
 
+        def update(self,temp,humid):
+            self.accessTimes += 1
+            self.currentTemp = temp
+            self.currentHumid = humid
+            self.cumulitiveTemp += temp
+            self.cumulitiveHumidity += humid
+            self.computeAverages()
+
+        def computeAverages(self) :
+            self.currentTemperatureAverage = self.cumulitiveTemp / self.accessTimes
+            self.currentHumidityAverage = self.cumulitiveHumidity / self.accessTimes
+            
+        def toString(self) :
+            returnString = 'The current temperature is {:.1f}C and the current humidity is {:.1f}% \n The average temperature over the last five minutes was  {:.1f}C and the average humidity was {:.1f}% <br>'.format(
+                            self.currentTemp, self.currentHumid, self.currentTemperatureAverage, self.currentHumidityAverage)
+            
+            return returnString
+        def reset(self):
+            self.currentTemp = 0
+            self.currentHumid = 0
+            self.cumulitiveTemp = 0
+            self.cumulitiveHumidity = 0
+            self.currentTemperatureAverage = 0
+            self.currentHumidityAverage = 0
+            self.accessTimes = 0
+            
+
+
+datum = Datum()
 #Motion Sensor Setup
 GPIO.setmode(GPIO.BCM) #Set GPIO to pin numbering
-GPIO.setup(23, GPIO.IN) #Setup GPIO pin PIR as input
+GPIO.setup(24, GPIO.IN) #Setup GPIO pin PIR as input
 print ("Sensor initializing . . .")
 time.sleep(2) #Give sensor time to startup
 print ("Active")
@@ -32,27 +71,42 @@ dht = Adafruit_DHT.DHT22
 
 #Main while loop, can be interrupted by a faulty read from the temp/humidity
 #or by a KeyboardInterrupt (ctr-c by the user)
-try:
-    print("Loop entered")
+motion_detected = 0
 
-    while True:
-        if GPIO.input(23): #If PIR pin goes high, motion is detected
-            print ("Motion Detected!")
-            time.sleep(5)
-        try:
+
+email = input("Enter an email")
+
+
+while True:
+    five = time.time() + (60*1)
+    try:
+        print("Loop entered")
+
+        while time.time() < five:
+            if GPIO.input(24): #If PIR pin goes high, motion is detected
+                print('Motion detected!')
+                motion_detected += 1
+                time.sleep(2)
             humidity, temperature = Adafruit_DHT.read_retry(dht, 23)
-            # Print what we got
+            #Add what we got to a running total
             if humidity is not None and temperature is not None:
-                print("Temp: {:.1f} *C \t Humidity: {}%".format(temperature, humidity))
-                time.sleep(5)
-        except:
-            pass
+                datum.update(temperature,humidity)
+            time.sleep(.1)
+        
+        motion_string = 'Motion was detected ' + str(motion_detected) + ' times over the last five minutes\n'
+        sendEmail(email, datum.toString(), motion_string)
+        motion_detected = 0
+        datum.reset()
+            
+    except KeyboardInterrupt: #Ctrl-c
+        break
+        pass #Go to finally
 
-except KeyboardInterrupt: #Ctrl-c
-    pass #Go to finally
+    finally:
+        GPIO.cleanup() #reset all GPIO
 
-finally:
-    GPIO.cleanup() #reset all GPIO
-    print ("Program ended")
+print ("Program ended")
+
+
 
 
