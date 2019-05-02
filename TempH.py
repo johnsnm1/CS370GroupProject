@@ -76,37 +76,45 @@ motion_detected = 0
 
 email = input("Enter an email")
 
-
-while True:
-    five = time.time() + (60*1)
-    try:
-        print("Loop entered")
-
-        while time.time() < five:
-            if GPIO.input(24): #If PIR pin goes high, motion is detected
-                print('Motion detected!')
-                motion_detected += 1
-                time.sleep(2)
-            humidity, temperature = Adafruit_DHT.read_retry(dht, 23)
-            #Add what we got to a running total
-            if humidity is not None and temperature is not None:
-                datum.update(temperature,humidity)
-            time.sleep(.1)
+try:
+	while True:
+		five = time.time() + (60*5)
+		try:
+			print("Loop entered")
+			
+			#While it hasn't been five minutes
+			while time.time() < five:
+				if GPIO.input(24): #If PIR pin goes high, motion is detected
+					print('Motion detected!')
+					motion_detected += 1
+					time.sleep(2) #Give the sensor time to reset, in case of constant motion detected
+				
+				#Attempt to read from the DHT sensor
+				humidity, temperature = Adafruit_DHT.read_retry(dht, 23)
+				
+				#Add what we got to a running total, if the reading did not fail
+				if humidity is not None and temperature is not None:
+					datum.update(temperature,humidity)
+				
+				#Wait a millisecond before taking the next readings
+				time.sleep(.1)
         
-        motion_string = 'Motion was detected ' + str(motion_detected) + ' times over the last five minutes\n'
-        sendEmail(email, datum.toString(), motion_string)
-        motion_detected = 0
-        datum.reset()
+			motion_string = 'Motion was detected ' + str(motion_detected) + ' times over the last five minutes\n'
+			
+			#Send an email with the given email address, and the temperature/humidity and motion information detected
+			sendEmail(email, datum.toString(), motion_string)
+			motion_detected = 0
+			datum.reset()
+		
+		#Account for cases where the reading of the temp/humidity sensor fails and throws an exception, just try the loop again		
+		except:
+			pass
             
-    except KeyboardInterrupt: #Ctrl-c
-        break
-        pass #Go to finally
+except KeyboardInterrupt: #Ctrl-c
+	pass #Go to finally
 
-    finally:
-        GPIO.cleanup() #reset all GPIO
+finally:
+	break #break out of our loop
+	GPIO.cleanup() #reset all GPIO
 
 print ("Program ended")
-
-
-
-
